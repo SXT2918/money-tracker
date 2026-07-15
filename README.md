@@ -5,6 +5,9 @@ expense transfers from parents) against a calendar. Add a payment once, mark
 it received when it lands, and see at a glance what's outstanding for the
 month.
 
+**Deployment target:** GitHub Pages can publish this repository directly from `main`;
+enable Pages in repository settings to create the public demo URL.
+
 ![No backend](https://img.shields.io/badge/backend-none-lightgrey)
 ![Storage](https://img.shields.io/badge/storage-localStorage-blue)
 
@@ -49,6 +52,12 @@ you between devices or browsers — use **Back up** / **Restore** to move it.
 
 Plain HTML, CSS, and vanilla JavaScript — no frameworks, no dependencies,
 no build step.
+
+## Data format and limitations
+
+Backups use a versioned JSON envelope and restored records are schema-validated. The app
+does not sync across devices, recover cleared browser storage, or provide multi-user
+access. See [SECURITY.md](SECURITY.md) for safe backup handling.
 
 ## License
 
