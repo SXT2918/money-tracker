@@ -22,7 +22,7 @@
 
   header{margin-bottom:18px}
   .brand{display:flex;align-items:baseline;gap:10px}
-  .brand h1{font-size:22px;letter-spacing:-.01em;margin:0;font-weight:650}
+  .brand h1{font-size:22px;letter-spacing:-.01em;margin:0;font-weight:600}
   .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--teal);transform:translateY(-2px)}
   .brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
 
@@ -38,7 +38,7 @@
   .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 14px;font-weight:600}
 
   .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .cal-head .month{font-size:17px;font-weight:650;min-width:170px}
+  .cal-head .month{font-size:17px;font-weight:600;min-width:170px}
   .navbtn{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--ink)}
   .navbtn:hover{border-color:var(--muted)}
   .today-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 14px;height:34px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
@@ -96,7 +96,7 @@
   tbody td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
   tbody tr:last-child td{border-bottom:none}
   tbody tr:hover{background:#FAFBFC}
-  .who{font-weight:550}
+  .who{font-weight:500}
   .meta{color:var(--muted);font-size:12px}
   .range{white-space:nowrap;color:var(--muted);font-family:var(--mono);font-size:12.5px}
   .status{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);white-space:nowrap}
@@ -230,10 +230,20 @@
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function uid(){return Date.now()+"-"+Math.random().toString(36).slice(2,7);}
   function fmt(iso){var d=parseD(iso),mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return mn[d.getMonth()]+" "+d.getDate();}
+  function validISODate(value){
+    if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+    var parsed=parseD(value);return !isNaN(parsed.getTime())&&isoL(parsed)===value;
+  }
+  function validPayment(p){
+    return p&&typeof p==="object"&&typeof p.id==="string"&&p.id.length<=100&&
+      typeof p.who==="string"&&p.who.length<=200&&typeof p.note==="string"&&p.note.length<=2000&&
+      typeof p.amount==="number"&&Number.isFinite(p.amount)&&p.amount>0&&p.amount<=1000000000&&
+      validISODate(p.start)&&validISODate(p.end)&&p.start<=p.end&&typeof p.received==="boolean";
+  }
 
   // ---- load + one-time migration from older versions ----
   var payments=null;
-  try{var raw=localStorage.getItem(PKEY);payments=raw?JSON.parse(raw):null;}catch(e){payments=null;}
+  try{var raw=localStorage.getItem(PKEY);payments=raw?JSON.parse(raw):null;if(!Array.isArray(payments)||!payments.every(validPayment))payments=null;}catch(e){payments=null;}
   if(payments===null){
     payments=[];
     try{
@@ -278,7 +288,10 @@
     var b=e.target.closest("[data-act]"); if(!b)return;
     var id=b.getAttribute("data-id"), act=b.getAttribute("data-act");
     var p=payments.find(function(x){return x.id===id;}); if(!p)return;
-    if(act==="del"){payments=payments.filter(function(x){return x.id!==id;});}
+    if(act==="del"){
+      if(!confirm("Delete this payment? This cannot be undone unless you have a backup."))return;
+      payments=payments.filter(function(x){return x.id!==id;});
+    }
     else if(act==="toggle"){p.received=!p.received;}
     else if(act==="repeat"){
       var span=diffDays(parseD(p.end),parseD(p.start))+1;
@@ -295,6 +308,11 @@
     var bar=e.target.closest(".bar"); if(!bar||!bar.dataset.id)return;
     var p=payments.find(function(x){return x.id===bar.dataset.id;}); if(!p)return;
     p.received=!p.received; saveP(); renderAll();
+  });
+  $("calGrid").addEventListener("keydown",function(e){
+    if(e.key!=="Enter"&&e.key!==" ")return;
+    var bar=e.target.closest(".bar");if(!bar)return;
+    e.preventDefault();bar.click();
   });
   $("prevM").onclick=function(){if(--curM<0){curM=11;curY--;}renderCalendar();};
   $("nextM").onclick=function(){if(++curM>11){curM=0;curY++;}renderCalendar();};
@@ -361,7 +379,7 @@
         var txt=short(ev.amount)+(ev.who?" \u00b7 "+esc(ev.who):"");
         var tip=(ev.who?esc(ev.who)+" \u2014 ":"")+money(ev.amount)+(ev.note?" \u00b7 "+esc(ev.note):"")+" \u00b7 "+
           (ev.state==="recv"?"received (click to undo)":ev.state==="due"?"due now — click when it arrives":"upcoming");
-        html+="<div class='bar "+ev.state+rnd+"' style='grid-column:"+(sg.colS+1)+" / span "+L+";grid-row:"+(sg.lane+1)+"' data-id='"+ev.id+"' title='"+tip+"'>"+mark+"<span class='bt'>"+txt+"</span></div>";
+        html+="<div class='bar "+ev.state+rnd+"' role='button' tabindex='0' aria-label='"+tip+"' style='grid-column:"+(sg.colS+1)+" / span "+L+";grid-row:"+(sg.lane+1)+"' data-id='"+ev.id+"' title='"+tip+"'>"+mark+"<span class='bt'>"+txt+"</span></div>";
       });
       html+="</div></div>";
     }
@@ -419,6 +437,8 @@
       else if(d.payments){ incoming=d.payments; }
       else if(d.transactions){ incoming=d.transactions.map(function(x){return {id:uid(),who:x.who||"Parents",amount:x.amount,start:x.date,end:x.date,received:true,note:x.note||""};}); }
       else throw new Error("bad");
+      incoming=incoming.map(function(p){return {id:String(p.id||uid()),who:String(p.who||"Parents"),amount:Number(p.amount),start:p.start,end:p.end,received:p.received,note:String(p.note||"")};});
+      if(incoming.length>10000||!incoming.every(validPayment))throw new Error("invalid backup schema");
       if(payments.length&&!confirm("Replace your current payments with this backup?"))return;
       payments=incoming; saveP(); renderAll();
     }catch(err){alert("That file could not be read as a backup.");}};

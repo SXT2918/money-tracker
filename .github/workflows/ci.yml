@@ -1,0 +1,16 @@
+name: Quality checks
+on: [push, pull_request]
+jobs:
+  html:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pip install html5validator
+      - run: html5validator --root . --also-check-css
